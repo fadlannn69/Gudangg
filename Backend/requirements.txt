@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+face_recognition
+sqlmodel
+passlib[argon2]
+python-dotenv
+pyjwt
+python-multipart
+psycopg2-binary
+cryptography
+openpyxl
+qrcode
+Pillow
