@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gudkoptell/home/add.dart';
 import 'package:gudkoptell/home/delete.dart';
+import 'package:gudkoptell/home/histori.dart';
+import 'package:gudkoptell/home/jual.dart';
 import 'package:gudkoptell/home/update.dart';
 import 'package:gudkoptell/model/model_barang.dart';
 import 'package:gudkoptell/registry/login.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import '../auth_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class Dashboard extends StatefulWidget {
   static const routeName = '/dashboard';
@@ -19,8 +23,8 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
-  List<ModellBarang> daftarBarang = [];
-  List<ModellBarang> semuaBarang = [];
+  List<ModelBarang> daftarBarang = [];
+  List<ModelBarang> semuaBarang = [];
   bool isLoading = true;
   String filterJenis = 'Semua Jenis';
   int pageIndex = 0;
@@ -63,7 +67,7 @@ class _DashboardState extends State<Dashboard> {
         if (response.data is! List) throw Exception("Data barang tidak valid");
 
         final List data = response.data;
-        final allBarang = data.map((e) => ModellBarang.fromJson(e)).toList();
+        final allBarang = data.map((e) => ModelBarang.fromJson(e)).toList();
 
         setState(() {
           semuaBarang = allBarang;
@@ -91,7 +95,7 @@ class _DashboardState extends State<Dashboard> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error")));
+      ).showSnackBar(SnackBar(content: Text("Error ${e}")));
       setState(() => isLoading = false);
     }
   }
@@ -109,6 +113,21 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  TableRow _buildTableRow(String label, String value) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 15, right: 15),
+          child: Text("$label ", style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 15, right: 15),
+          child: Text(":          ${value}"),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final paginated =
@@ -118,14 +137,13 @@ class _DashboardState extends State<Dashboard> {
                 .take(itemsPerPage)
                 .toList()
             : daftarBarang;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.red,
         title: Padding(
           padding: EdgeInsets.only(left: 70.w),
           child: Text(
-            "GuudKoptell!!",
+            "Gudang!",
             style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold),
           ),
         ),
@@ -214,52 +232,210 @@ class _DashboardState extends State<Dashboard> {
                           itemCount: paginated.length,
                           itemBuilder: (context, index) {
                             final barang = paginated[index];
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: 12.r),
-                              child: Container(
-                                padding: EdgeInsets.all(12.r),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(16.r),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      offset: Offset(0, 2),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Image.network(
-                                      '${dotenv.env['API_BASE_URL']}/barang/${barang.nama}/qrcode',
-                                      width: 100.w,
-                                      height: 100.w,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Icon(Icons.broken_image),
-                                    ),
-                                    SizedBox(width: 16.w),
-                                    Expanded(
-                                      child: Column(
+                            final now = DateTime.now();
+                            final pembelian = barang.waktu;
+
+                            int tahun = now.year - pembelian.year;
+                            int bulan = now.month - pembelian.month;
+                            int hari = now.day - pembelian.day;
+
+                            if (hari < 0) {
+                              bulan -= 1;
+                              final prevMonth = DateTime(
+                                now.year,
+                                now.month,
+                                0,
+                              );
+                              hari += prevMonth.day;
+                            }
+
+                            if (bulan < 0) {
+                              tahun -= 1;
+                              bulan += 12;
+                            }
+
+                            final usiaFormatted =
+                                "$tahun Tahun $bulan Bulan  $hari Hari";
+
+                            return InkWell(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    ModelBarang barangDialog = barang;
+
+                                    String waktuJuall =
+                                        barangDialog.waktujual != null
+                                            ? DateFormat(
+                                              'dd MMM yyyy',
+                                            ).format(barangDialog.waktujual!)
+                                            : 'Belum Terjual';
+                                    return AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      title: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                            CrossAxisAlignment.center,
                                         children: [
                                           Text(
-                                            barang.nama,
+                                            barangDialog.nama,
                                             style: TextStyle(
+                                              fontSize: 30,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 16.sp,
                                             ),
+                                            textAlign: TextAlign.center,
                                           ),
-                                          SizedBox(height: 6.h),
-                                          Text("Harga: Rp${barang.harga}"),
-                                          Text("Stok: ${barang.stok} Pcs"),
-                                          Text("Jenis: ${barang.jenis}"),
                                         ],
                                       ),
-                                    ),
-                                  ],
+                                      content: StatefulBuilder(
+                                        builder: (
+                                          BuildContext context,
+                                          StateSetter setStateDialog,
+                                        ) {
+                                          return Container(
+                                            width: 500,
+                                            height: 600,
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                SizedBox(height: 15),
+                                                CachedNetworkImage(
+                                                  imageUrl:
+                                                      '${dotenv.env['API_BASE_URL']}/uploaded_images/${barangDialog.gambar}',
+                                                  width: 150.w,
+                                                  height: 150.h,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                                SizedBox(height: 30.h),
+                                                Table(
+                                                  columnWidths: const {
+                                                    0: IntrinsicColumnWidth(),
+                                                    1: FlexColumnWidth(),
+                                                  },
+                                                  children: [
+                                                    _buildTableRow(
+                                                      "Harga Barang",
+                                                      "Rp ${barangDialog.harga}",
+                                                    ),
+                                                    _buildTableRow(
+                                                      "Stok Barang",
+                                                      "${barangDialog.stok} Pcs",
+                                                    ),
+                                                    _buildTableRow(
+                                                      "Waktu Pembelian",
+                                                      "${DateFormat('yyyy-MM-dd').format(barangDialog.waktu)}",
+                                                    ),
+                                                    _buildTableRow(
+                                                      "Jenis Barang",
+                                                      "${barangDialog.jenis}",
+                                                    ),
+                                                    _buildTableRow(
+                                                      "Usia Barang",
+                                                      usiaFormatted,
+                                                    ),
+                                                    _buildTableRow(
+                                                      "Lokasi Penempatan",
+                                                      "${barangDialog.lokasi}",
+                                                    ),
+                                                    _buildTableRow(
+                                                      "Terjual",
+                                                      "${barangDialog.terjual}",
+                                                    ),
+                                                    _buildTableRow(
+                                                      "Waktu Penjualan",
+                                                      "${waktuJuall}",
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      actions: [
+                                        Container(
+                                          alignment: Alignment.center,
+                                          child: TextButton(
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.black,
+                                              backgroundColor: Colors.grey[200],
+                                              minimumSize: Size(75, 25),
+                                            ),
+                                            onPressed:
+                                                () => Navigator.pop(context),
+                                            child: Text(
+                                              'Tutup',
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.only(bottom: 12.r),
+                                child: Container(
+                                  padding: EdgeInsets.all(12.r),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(16.r),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        offset: Offset(0, 2),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CachedNetworkImage(
+                                        imageUrl:
+                                            '${dotenv.env['API_BASE_URL']}/uploaded_images/${barang.gambar}',
+                                        width: 100.w,
+                                        height: 100.w,
+                                        fit: BoxFit.cover,
+                                        placeholder:
+                                            (context, url) =>
+                                                CircularProgressIndicator(),
+                                        errorWidget:
+                                            (context, url, error) =>
+                                                Icon(Icons.broken_image),
+                                      ),
+                                      SizedBox(width: 16.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              barang.nama,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16.sp,
+                                              ),
+                                            ),
+                                            SizedBox(height: 6.h),
+                                            Text(
+                                              "Harga Barang: Rp${barang.harga}",
+                                            ),
+                                            Text(
+                                              "Stok Barang: ${barang.stok} Pcs",
+                                            ),
+                                            Text(
+                                              "Jenis Barang: ${barang.jenis}",
+                                            ),
+                                            Text(
+                                              "Waktu Pembelian: ${DateFormat('yyyy-MM-dd').format(DateTime.parse('${barang.waktu}'))}",
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
@@ -392,6 +568,28 @@ class MyDrawer extends StatelessWidget {
           ),
           buildDrawerItem(
             context,
+            icon: Icons.sell,
+            title: "Jual Barang",
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => Jual()),
+              );
+            },
+          ),
+          buildDrawerItem(
+            context,
+            icon: Icons.history,
+            title: "Histori Penjualan",
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => HistoriPage()),
+              );
+            },
+          ),
+          buildDrawerItem(
+            context,
             icon: Icons.download,
             title: "Download Excel",
             onTap: () async {
@@ -442,7 +640,7 @@ class MyDrawer extends StatelessWidget {
               }
             },
           ),
-          SizedBox(height: 270.h),
+          SizedBox(height: 100.h),
           buildDrawerItem(
             context,
             icon: Icons.logout,

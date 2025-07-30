@@ -1,3 +1,0 @@
-# gudkoptell
-# gudkoptell
-# Gudkoptel

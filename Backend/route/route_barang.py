@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException,Query,File,Form,UploadFile
 from sqlmodel import select , Session 
 from database import get_session, engine 
-from model.model_barang import Barang, SQLModel ,BarangUpdate , BarangCreate
+from model.model_barang import Barang, SQLModel ,BarangUpdate , BarangCreate , Histori , HistoriCreate , HistoriRead
 from auth import AuthHandler
 from fastapi.responses import FileResponse ,StreamingResponse
 from openpyxl import Workbook
@@ -13,9 +13,34 @@ from io import BytesIO
 from datetime import datetime
 from typing import List , Optional
 from uuid import uuid4
+import shutil
+from PIL import Image   
+from dateutil.relativedelta import relativedelta
+from datetime import date
+
 
 auth_handler = AuthHandler()
 barang = APIRouter()
+
+
+@barang.post("/addhistori", response_model=HistoriRead)
+def add_histori(histori_data: HistoriCreate, session: Session = Depends(get_session)):
+    histori = Histori(
+        nama=histori_data.nama,
+        terjual=histori_data.terjual,
+        harga=histori_data.harga,
+        waktujual=histori_data.waktujual or datetime.utcnow()
+    )
+    session.add(histori)
+    session.commit()
+    session.refresh(histori)
+    return histori
+
+@barang.get("/histori", response_model=list[HistoriRead])
+def get_histori(session: Session = Depends(get_session)):
+    return session.exec(select(Histori)).all()
+
+
 
 
 @barang.get("/{nama}/qrcode")
@@ -61,6 +86,7 @@ def export_barang_excel(session: Session = Depends(get_session)):
     wb = Workbook()
     ws = wb.active
     ws.title = f"Laporan Barang Tanggal {tgl}"
+    
 
     border = Border(
         left=Side(style='thin'),
@@ -69,7 +95,7 @@ def export_barang_excel(session: Session = Depends(get_session)):
         bottom=Side(style='thin')
     )
 
-    headers = ["Nama Barang", "Harga Barang(Rp)", "Stok Barang(Pcs)", "Lokasi Penempatan Barang" , "Waktu Pembelian Barang" , "jenis Barang"]
+    headers = ["Nama Barang", "Harga Barang(Rp)", "Stok Barang(Pcs)", "Lokasi Penempatan Barang" , "Waktu Pembelian Barang" ,"Usia Barang" , "jenis Barang" , "Barang Terjual (Pcs)"]
     ws.append(headers)
 
     for col_num, column_title in enumerate(headers, 1):
@@ -79,7 +105,17 @@ def export_barang_excel(session: Session = Depends(get_session)):
         cell.alignment = Alignment(horizontal='center')
 
     for row_num, item in enumerate(barangs, 2):
-        row_data = [item.nama, item.harga, item.stok,item.lokasi , item.waktu , item.jenis]
+        sekarang = datetime.now().date()
+        selisih = relativedelta(sekarang, item.waktu)
+
+        hari = selisih.days
+        bulan = selisih.months
+        tahun = selisih.years
+
+        usia = f"{hari} Hari, {bulan} Bulan, {tahun} Tahun"
+
+            
+        row_data = [item.nama, item.harga, item.stok, item.lokasi , item.waktu , usia ,  item.jenis , item.terjual]
         for col_num, value in enumerate(row_data, 1):
             cell = ws.cell(row=row_num, column=col_num, value=value)
             cell.border = border
@@ -99,7 +135,8 @@ def export_barang_excel(session: Session = Depends(get_session)):
         headers={"Content-Disposition": "attachment; filename=laporan_barang.xlsx"}
     )
 
-UPLOAD_DIR = "uploaded_images"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_images")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @barang.post("/tambah")
@@ -107,32 +144,53 @@ async def tambah_barang(
     nama: str = Form(...),
     harga: int = Form(...),
     stok: int = Form(...),
+    lokasi: str = Form(...),
+    waktu: str = Form(...),
+    jenis: Optional[str] = Form(None),
     gambar: UploadFile = File(None),
     session: Session = Depends(get_session)
 ):
-    filename = None
+    if not nama or harga < 0 or stok < 0 or not lokasi or not waktu:
+        raise HTTPException(status_code=400, detail="Data tidak lengkap atau tidak valid")
 
+    try:
+        waktu_date = datetime.strptime(waktu, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Format tanggal tidak valid, gunakan YYYY-MM-DD")
+
+    filename = None
     if gambar:
         ext = gambar.filename.split(".")[-1].lower()
         if ext not in {"jpg", "jpeg", "png"}:
-            raise HTTPException(status_code=400, detail="Format gambar tidak valid")
-        
-        # Buat nama unik dan path file
+            raise HTTPException(status_code=400, detail="Format gambar harus jpg/jpeg/png")
+
         filename = f"{uuid4()}.{ext}"
         filepath = os.path.join(UPLOAD_DIR, filename)
 
         try:
             with open(filepath, "wb") as f:
+                gambar.file.seek(0)
                 shutil.copyfileobj(gambar.file, f)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Gagal menyimpan gambar")
 
-    # Simpan data barang ke DB
-    barang = Barang(nama=nama, harga=harga, stok=stok, gambar=filename)
-    session.add(barang)
+            with Image.open(filepath) as img:
+                img.thumbnail((800, 800)) 
+                img.save(filepath)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Gagal menyimpan atau resize gambar: {str(e)}")
+
+    barang_baru = Barang(
+        nama=nama,
+        harga=harga,
+        stok=stok,
+        lokasi=lokasi,
+        waktu=waktu_date,
+        jenis=jenis,
+        gambar=filename
+    )
+    session.add(barang_baru)
     session.commit()
-    session.refresh(barang)
-    return barang
+    session.refresh(barang_baru)
+    return barang_baru
 
 
 @barang.get("/ambil", response_model=List[Barang])
@@ -147,6 +205,24 @@ def get_barang(
         query = query.where(Barang.jenis == jenis)
     barang = session.exec(query.offset(skip).limit(limit)).all()
     return barang
+
+@barang.put("/{id}/jual")
+def jual_barang(id: int):
+    with Session(engine) as session:
+        barang = session.get(Barang, id)
+        if not barang:
+            raise HTTPException(status_code=404, detail="Barang tidak ditemukan")
+
+        if barang.stok <= 0:
+            raise HTTPException(status_code=400, detail="Stok barang habis")
+        
+        barang.waktujual = date.today()
+        barang.stok -= 1
+        barang.terjual += 1 
+        session.add(barang)
+        session.commit()
+        session.refresh(barang)
+        return barang
 
 
 @barang.put("/update/{nama}")

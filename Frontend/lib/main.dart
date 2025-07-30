@@ -7,7 +7,6 @@ import 'package:gudkoptell/registry/face_login.dart';
 import 'package:gudkoptell/registry/face_regis.dart';
 import 'package:gudkoptell/home/dashboard.dart';
 import 'package:gudkoptell/http/http_user.dart';
-import 'package:gudkoptell/http/http_barang.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +16,6 @@ Future<void> main() async {
     debugPrint("Gagal load .env: $e");
   }
   UserApiService.init();
-  BarangApiService.init();
   runApp(const GudkopTelApp());
 }
 

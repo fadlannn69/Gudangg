@@ -1,35 +1,53 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gudkoptell/auth_service.dart';
 import 'package:gudkoptell/model/model_barang.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class BarangApiService {
-  static final Dio _dio = Dio(
-      BaseOptions(
-        baseUrl: dotenv.env['API_BASE_URL'] ?? '',
-        headers: {'Content-Type': 'application/json'},
-        connectTimeout: Duration(seconds: 20),
-        receiveTimeout: Duration(seconds: 20),
-      ),
-    )
-    ..interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final token = await AuthService.getToken();
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
-          return handler.next(options);
-        },
-        onError: (e, handler) {
-          print("DIO ERROR: ${e.response?.statusCode} - ${e.message}");
-          return handler.next(e);
-        },
-      ),
-    );
+  static final Dio _dio =
+      Dio(
+          BaseOptions(
+            baseUrl: dotenv.env['API_BASE_URL'] ?? '',
+            headers: {'Content-Type': 'application/json'},
+            connectTimeout: Duration(seconds: 20),
+            receiveTimeout: Duration(seconds: 20),
+          ),
+        )
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) async {
+              final token = await AuthService.getToken();
+              if (token != null && token.isNotEmpty) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
+              return handler.next(options);
+            },
+            onError: (e, handler) {
+              if (e.response?.statusCode == 401) {
+                print("Token expired atau tidak valid");
+                // TODO: Handle logout/refresh token/redirect
+              }
+              print("DIO ERROR: ${e.response?.statusCode} - ${e.message}");
+              return handler.next(e);
+            },
+          ),
+        )
+        ..interceptors.add(
+          LogInterceptor(
+            request: true,
+            requestBody: true,
+            responseBody: true,
+            responseHeader: false,
+            error: true,
+            logPrint: (obj) {
+              if (kDebugMode) print(obj);
+            },
+          ),
+        );
 
   // GET
-  static Future<List<ModellBarang>> fetchBarang({
+  static Future<List<ModelBarang>> fetchBarang({
     int skip = 0,
     int limit = 10,
     String? jenis,
@@ -44,20 +62,31 @@ class BarangApiService {
         },
       );
       final data = response.data as List;
-      return data.map((json) => ModellBarang.fromJson(json)).toList();
+      return data.map((json) => ModelBarang.fromJson(json)).toList();
     } catch (e) {
       print("Error fetchBarang: $e");
       return [];
     }
   }
 
-  // POST
-  static Future<bool> tambahBarang(ModellBarang barang) async {
+  // POST JSON (Tanpa Gambar)
+  static Future<bool> tambahBarang(ModelBarang barang) async {
     try {
       final response = await _dio.post('/barang/tambah', data: barang.toJson());
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print("Error tambahBarang: $e");
+      return false;
+    }
+  }
+
+  // POST FormData (Dengan Gambar)
+  static Future<bool> tambahBarangWithFormData(FormData formData) async {
+    try {
+      final response = await _dio.post('/barang/tambah', data: formData);
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print("Error tambahBarangWithFormData: $e");
       return false;
     }
   }
@@ -87,7 +116,7 @@ class BarangApiService {
     }
   }
 
-  // export Excel
+  // Export Excel
   static Future<Response?> exportExcel() async {
     try {
       final response = await _dio.get(
@@ -100,6 +129,4 @@ class BarangApiService {
       return null;
     }
   }
-
-  static void init() {}
 }
