@@ -70,43 +70,56 @@ async def register_face(
         print("🔥 ERROR register-face:", str(e))
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
+
 @user.post("/verify-face")
 async def verify_face(
     nik: int = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_session)
 ):
+    temp_path = f"temp_{file.filename}"
     try:
-        temp_path = f"temp_{file.filename}"
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
         image = face_recognition.load_image_file(temp_path)
         face_encodings = face_recognition.face_encodings(image)
 
-        if len(face_encodings) == 0:
+        if not face_encodings:
             raise HTTPException(status_code=400, detail="No face detected in the image.")
 
-        face_encoding = face_encodings[0]
+        input_encoding = face_encodings[0]
 
         user = db.query(User).filter(User.nik == nik).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        try:
-            stored_encoding = np.array(json.loads(user.face_encoding), dtype=np.float32)  
-        except Exception as e:
-            print("❌ Failed parsing face encoding:", str(e))
-            raise HTTPException(status_code=500, detail="Corrupted face encoding in database")
+        face_data = user.face_encoding
 
-        results = face_recognition.compare_faces([stored_encoding], face_encoding)
-        os.remove(temp_path)
+        # Periksa format face_data
+        if isinstance(face_data, str):
+            try:
+                face_data = json.loads(face_data)
+            except Exception:
+                raise HTTPException(status_code=500, detail="Corrupted face encoding (invalid JSON string)")
+        elif isinstance(face_data, list):
+            pass
+        else:
+            raise HTTPException(status_code=500, detail="Corrupted face encoding (unknown format)")
 
-        if results[0]:
+        # Bandingkan wajah
+        match_result = face_recognition.compare_faces([np.array(face_data)], input_encoding)
+
+        if match_result[0]:
             return {"message": "Face verified successfully"}
         else:
             raise HTTPException(status_code=401, detail="Face verification failed")
 
+    except HTTPException:
+        raise
     except Exception as e:
         print("🔥 ERROR verify-face:", str(e))
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)

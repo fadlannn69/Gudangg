@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy import Column, JSON
 
+
 class User(SQLModel, table=True):
-    id: int = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     nik: int
     nama: str
     email: str

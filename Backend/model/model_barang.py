@@ -57,16 +57,13 @@ class BarangUpdate(SQLModel):
     harga: Optional[int] = None
     stok: Optional[int] = None
     
-    
-from pydantic import BaseModel
-
-class HistoriCreate(BaseModel):
+class HistoriCreate(SQLModel):
     nama: str
     terjual: int
     harga: int
     waktujual: Optional[datetime] = None
 
-class HistoriRead(BaseModel):
+class HistoriRead(SQLModel):
     id: int
     nama: str
     terjual: int
@@ -74,5 +71,3 @@ class HistoriRead(BaseModel):
     total_harga: int
     waktujual: datetime
 
-    class Config:
-        orm_mode = True  

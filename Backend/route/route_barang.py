@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException,Query,File,Form,UploadFile
-from sqlmodel import select , Session 
+from sqlmodel import select , Session , SQLModel
 from database import get_session, engine 
-from model.model_barang import Barang, SQLModel ,BarangUpdate , BarangCreate , Histori , HistoriCreate , HistoriRead
+from model.model_barang import Barang, BarangUpdate , BarangCreate , Histori , HistoriCreate , HistoriRead
 from auth import AuthHandler
 from fastapi.responses import FileResponse ,StreamingResponse
 from openpyxl import Workbook
@@ -22,24 +22,21 @@ from datetime import date
 auth_handler = AuthHandler()
 barang = APIRouter()
 
-
-@barang.post("/addhistori", response_model=HistoriRead)
-def add_histori(histori_data: HistoriCreate, session: Session = Depends(get_session)):
-    histori = Histori(
-        nama=histori_data.nama,
-        terjual=histori_data.terjual,
-        harga=histori_data.harga,
-        waktujual=histori_data.waktujual or datetime.utcnow()
-    )
-    session.add(histori)
-    session.commit()
-    session.refresh(histori)
-    return histori
-
-@barang.get("/histori", response_model=list[HistoriRead])
-def get_histori(session: Session = Depends(get_session)):
-    return session.exec(select(Histori)).all()
-
+def get_ukuran_order(nama: str) -> int:
+    ukuran_order = {
+        'XS': 1,
+        'S': 2,
+        'M': 3,
+        'L': 4,
+        'XL': 5,
+        '2XL': 6,
+        '3XL': 7,
+        '5XL': 8,
+    }
+    for ukuran, order in ukuran_order.items():
+        if f"({ukuran})" in nama.upper():
+            return order
+    return 999
 
 
 
@@ -203,26 +200,29 @@ def get_barang(
     query = select(Barang)
     if jenis:
         query = query.where(Barang.jenis == jenis)
-    barang = session.exec(query.offset(skip).limit(limit)).all()
-    return barang
+    result = session.exec(query).all()
 
-@barang.put("/{id}/jual")
-def jual_barang(id: int):
-    with Session(engine) as session:
-        barang = session.get(Barang, id)
-        if not barang:
-            raise HTTPException(status_code=404, detail="Barang tidak ditemukan")
+    result.sort(key=lambda x: get_ukuran_order(x.nama))
 
-        if barang.stok <= 0:
-            raise HTTPException(status_code=400, detail="Stok barang habis")
-        
-        barang.waktujual = date.today()
-        barang.stok -= 1
-        barang.terjual += 1 
-        session.add(barang)
-        session.commit()
-        session.refresh(barang)
-        return barang
+    return result[skip: skip + limit]
+
+
+@barang.get("/jual", response_model=List[Barang])
+def get_barang_terjual(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1),
+    jenis: Optional[str] = None,
+    session: Session = Depends(get_session)
+):
+    query = select(Barang).where(Barang.terjual > 0)
+    if jenis:
+        query = query.where(Barang.jenis == jenis)
+    result = session.exec(query).all()
+
+    result.sort(key=lambda x: get_ukuran_order(x.nama))
+
+    return result[skip: skip + limit]
+
 
 
 @barang.put("/update/{nama}")
@@ -253,3 +253,23 @@ def delete_barang(nama:str, session=Depends(get_session)):
     session.delete(existing_barang)         
     session.commit()
     return {"detail": f"{existing_barang.nama} berhasil dihapus"}
+
+
+
+@barang.post("/addhistori", tags=["Barang"])
+def add_histori(histori_data: HistoriCreate, session: Session = Depends(get_session)):
+    histori = Histori(
+        nama=histori_data.nama,
+        terjual=histori_data.terjual,
+        harga=histori_data.harga,
+        waktujual=histori_data.waktujual or datetime.utcnow()
+    )
+    session.add(histori)
+    session.commit()
+    session.refresh(histori)
+    return histori
+
+@barang.get("/histori", tags=["Barang"])
+def get_histori(session: Session = Depends(get_session)):
+    return session.exec(select(Histori)).all()
+

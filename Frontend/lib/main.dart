@@ -37,7 +37,7 @@ class GudkopTelApp extends StatelessWidget {
             useMaterial3: true,
             scaffoldBackgroundColor: Colors.white,
           ),
-          initialRoute: Dashboard.routeName,
+          initialRoute: Login.routeName,
           routes: {
             Login.routeName: (context) => Login(),
             Register.routeName: (context) => Register(),
