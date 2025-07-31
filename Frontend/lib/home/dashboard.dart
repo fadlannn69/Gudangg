@@ -141,7 +141,7 @@ class _DashboardState extends State<Dashboard> {
       appBar: AppBar(
         backgroundColor: Colors.red,
         title: Padding(
-          padding: EdgeInsets.only(left: 70.w),
+          padding: EdgeInsets.only(left: 95.w),
           child: Text(
             "Gudang!",
             style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold),
@@ -640,7 +640,7 @@ class MyDrawer extends StatelessWidget {
               }
             },
           ),
-          SizedBox(height: 100.h),
+          SizedBox(height: 135.h),
           buildDrawerItem(
             context,
             icon: Icons.logout,

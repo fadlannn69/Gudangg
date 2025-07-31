@@ -23,8 +23,14 @@ services:
     ports:
       - "8000:8000"
     working_dir: /Backend
+    env_file:
+      - .env
     volumes:
-      - .:/Backend
+      - .:/Backend 
+      - ./ec_private.pem:/Backend/ec_private.pem
+      - ./ec_public.pem:/Backend/ec_public.pem
+      - ./uploaded_images:/Backend/uploaded_images
+
 
 volumes:
   postgres_data:

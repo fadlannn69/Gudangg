@@ -5,6 +5,7 @@ from route.route_user import user
 from database import engine
 from sqlmodel import SQLModel
 from fastapi.staticfiles import StaticFiles
+from model.model_barang import Barang, Histori
 import os
 
 app = FastAPI()

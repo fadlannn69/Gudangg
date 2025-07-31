@@ -245,9 +245,22 @@ class _JualState extends State<Jual> {
             ),
             SizedBox(width: 16.w),
             Expanded(
-              child: Text(
-                barang.nama,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    barang.nama,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.sp,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Stok: ${barang.stok}',
+                    style: TextStyle(fontSize: 14.sp, color: Colors.grey[700]),
+                  ),
+                ],
               ),
             ),
             Column(
