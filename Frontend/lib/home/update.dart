@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gudkoptell/home/dashboard.dart';
 import 'package:gudkoptell/http/http_barang.dart';
 import 'package:gudkoptell/model/model_barang.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 class Update extends StatefulWidget {
   const Update({super.key});
@@ -47,7 +49,7 @@ class _UpdateBarangScreenState extends State<UpdateBarangScreen> {
 
   Future<void> updateBarang() async {
     final nama = namaController.text.trim();
-    final harga = int.tryParse(hargaController.text.trim());
+    final harga = int.tryParse(hargaController.text.replaceAll('.', ''));
     final stok = int.tryParse(stokController.text.trim());
 
     if (nama.isEmpty || harga == null || stok == null) {
@@ -142,6 +144,10 @@ class _UpdateBarangScreenState extends State<UpdateBarangScreen> {
             TextField(
               controller: hargaController,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                ThousandsSeparatorInputFormatter(),
+              ],
               style: TextStyle(fontSize: 14.sp),
               decoration: InputDecoration(
                 labelText: "Harga Baru",
@@ -152,6 +158,7 @@ class _UpdateBarangScreenState extends State<UpdateBarangScreen> {
                 ),
               ),
             ),
+
             SizedBox(height: 16.h),
             TextField(
               controller: stokController,
@@ -193,6 +200,27 @@ class _UpdateBarangScreenState extends State<UpdateBarangScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  final formatter = NumberFormat.decimalPattern('id_ID');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    String text = newValue.text.replaceAll('.', '');
+    if (text.isEmpty) return newValue;
+
+    final number = int.parse(text);
+    final newText = formatter.format(number);
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
     );
   }
 }

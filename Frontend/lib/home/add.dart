@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:gudkoptell/home/update.dart';
 
 class AddPage extends StatefulWidget {
   @override
@@ -132,7 +134,7 @@ class _AddPageState extends State<AddPage> {
 
       final formData = FormData.fromMap({
         'nama': namaController.text,
-        'harga': int.tryParse(hargaController.text) ?? 0,
+        'harga': int.tryParse(hargaController.text.replaceAll('.', '')),
         'stok': int.tryParse(stokController.text) ?? 0,
         'lokasi': lokasiController.text,
         'waktu': waktuController.text,
@@ -213,14 +215,26 @@ class _AddPageState extends State<AddPage> {
                     ],
                   ),
                 ),
+
                 SizedBox(height: 5.h),
                 _buildTextField(namaController, "Nama Barang", Icons.abc),
-                _buildTextField(
-                  hargaController,
-                  "Harga Barang",
-                  Icons.price_change,
-                  isNumber: true,
+                SizedBox(height: 5.h),
+                TextField(
+                  controller: hargaController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    ThousandsSeparatorInputFormatter(),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: "Harga Barang",
+                    prefixIcon: Icon(Icons.price_change),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
                 ),
+                SizedBox(height: 10.h),
                 _buildTextField(
                   stokController,
                   "Stok Barang",

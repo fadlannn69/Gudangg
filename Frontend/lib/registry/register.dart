@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:gudkoptell/registry/face_regis.dart';
+import 'package:gudkoptell/registry/login.dart';
 import '../model/model_user.dart';
 import '../http/http_user.dart';
 
@@ -60,7 +60,7 @@ class _RegisterState extends State<Register> {
       _showSnackbar("Registrasi berhasil!", bgColor: Colors.green);
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => FaceRegis()),
+        MaterialPageRoute(builder: (context) => Login()),
       );
     } else {
       _showSnackbar("Registrasi gagal. Coba lagi.");

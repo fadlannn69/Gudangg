@@ -143,7 +143,7 @@ class ModelHistori {
   factory ModelHistori.fromJson(Map<String, dynamic> json) {
     return ModelHistori(
       id: json['id'],
-      nama: json['nama'],
+      nama: json['nama'] ?? '', // Hindari error Null
       harga: json['harga'] ?? 0,
       terjual: json['terjual'] ?? 0,
       totalHarga:
