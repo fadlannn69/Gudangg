@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:gudkoptell/home/dashboard.dart';
 import 'package:gudkoptell/model/model_user.dart';
-import 'package:gudkoptell/registry/face_login.dart';
 import 'package:gudkoptell/registry/register.dart';
 import '../http/http_user.dart';
 
@@ -50,7 +50,7 @@ class _LoginState extends State<Login> {
       _showSnackbar("Login berhasil", bgColor: Colors.green);
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => FaceLogin()),
+        MaterialPageRoute(builder: (context) => Dashboard()),
       );
     } else {
       _showSnackbar("Login gagal. Cek kembali NIK dan password.");

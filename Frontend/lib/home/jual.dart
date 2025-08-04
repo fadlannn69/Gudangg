@@ -8,6 +8,7 @@ import 'package:gudkoptell/home/dashboard.dart';
 import 'package:gudkoptell/model/model_barang.dart';
 import 'package:gudkoptell/registry/login.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 class Jual extends StatefulWidget {
   @override
@@ -20,6 +21,7 @@ class _JualState extends State<Jual> {
   Map<ModelBarang, int> jumlahBarang = {};
   bool isLoading = true;
   late BuildContext scaffoldContext;
+  bool isCheckoutProcessing = false;
 
   @override
   void initState() {
@@ -28,8 +30,19 @@ class _JualState extends State<Jual> {
   }
 
   Future<void> _checkoutBarang() async {
+    final String transaksiId = const Uuid().v4();
+
+    if (isCheckoutProcessing) return;
+
+    setState(() {
+      isCheckoutProcessing = true;
+    });
+
     final baseUrl = dotenv.env['API_BASE_URL'];
-    if (baseUrl == null) return;
+    if (baseUrl == null) {
+      isCheckoutProcessing = false;
+      return;
+    }
 
     final dio = Dio();
     final token = await AuthService.getToken();
@@ -40,37 +53,34 @@ class _JualState extends State<Jual> {
     try {
       for (var barang in keranjangBarang) {
         int jumlah = jumlahBarang[barang] ?? 1;
-        String waktuPembelian = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-        for (int i = 0; i < jumlah; i++) {
-          final response = await dio.put('$baseUrl/barang/${barang.id}/jual');
+        final formData = FormData.fromMap({
+          'jumlah': jumlah.toString(),
+          'transaksi_id': transaksiId,
+        });
 
-          if (response.statusCode != 200) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Gagal menjual ${barang.nama}"),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-        }
-
-        await dio.post(
-          '$baseUrl/barang/addhistori',
-          data: {
-            'nama': barang.nama,
-            'terjual': jumlah,
-            'harga': barang.harga,
-            'waktujual': DateTime.now().toIso8601String(),
-          },
+        final response = await dio.put(
+          '$baseUrl/barang/${barang.id}/jual',
+          data: formData,
+          options: Options(contentType: Headers.formUrlEncodedContentType),
         );
 
+        if (response.statusCode != 200) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Gagal menjual ${barang.nama}"),
+              backgroundColor: Colors.red,
+            ),
+          );
+          isCheckoutProcessing = false;
+          return;
+        }
         checkoutData.add({
           'nama': barang.nama,
-          'jumlah': jumlah,
-          'waktu': waktuPembelian,
+          'terjual': jumlah,
+          'waktu': DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+          'transaksi_id': transaksiId,
         });
       }
 
@@ -98,7 +108,7 @@ class _JualState extends State<Jual> {
                   return ListTile(
                     leading: Icon(Icons.shopping_cart),
                     title: Text(item['nama']),
-                    subtitle: Text("Jumlah: ${item['jumlah']}"),
+                    subtitle: Text("Jumlah: ${item['terjual']}"),
                     trailing: Text(item['waktu']),
                   );
                 },
@@ -130,6 +140,8 @@ class _JualState extends State<Jual> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      isCheckoutProcessing = false;
     }
   }
 
@@ -422,18 +434,18 @@ class _JualState extends State<Jual> {
                                     backgroundColor: Colors.red,
                                     minimumSize: Size(double.infinity, 48),
                                   ),
-                                  onPressed: () {
-                                    _checkoutBarang();
-                                    Navigator.pop(context);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text("Penjualan berhasil"),
-                                      ),
-                                    );
-                                  },
+                                  onPressed:
+                                      isCheckoutProcessing
+                                          ? null
+                                          : () {
+                                            _checkoutBarang();
+                                            Navigator.pop(context);
+                                          },
                                   icon: Icon(Icons.sell, color: Colors.black),
                                   label: Text(
-                                    "Jual Barang",
+                                    isCheckoutProcessing
+                                        ? "Memproses..."
+                                        : "Jual Barang",
                                     style: TextStyle(
                                       color: Colors.black,
                                       fontSize: 20,

@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-face_recognition
 sqlmodel
 passlib[argon2]
 python-dotenv
@@ -9,7 +8,6 @@ python-multipart
 psycopg2-binary
 cryptography
 openpyxl
-qrcode
 Pillow
 pydantic<2.0.0
 python-dateutil

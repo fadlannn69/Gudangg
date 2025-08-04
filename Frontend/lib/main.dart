@@ -3,8 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:gudkoptell/registry/login.dart';
 import 'package:gudkoptell/registry/register.dart';
-import 'package:gudkoptell/registry/face_login.dart';
-import 'package:gudkoptell/registry/face_regis.dart';
 import 'package:gudkoptell/home/dashboard.dart';
 import 'package:gudkoptell/http/http_user.dart';
 
@@ -37,12 +35,10 @@ class GudkopTelApp extends StatelessWidget {
             useMaterial3: true,
             scaffoldBackgroundColor: Colors.white,
           ),
-          initialRoute: Login.routeName,
+          initialRoute: Dashboard.routeName,
           routes: {
             Login.routeName: (context) => Login(),
             Register.routeName: (context) => Register(),
-            FaceLogin.routeName: (context) => FaceLogin(),
-            FaceRegis.routeName: (context) => FaceRegis(),
             Dashboard.routeName: (context) => Dashboard(),
           },
         );
