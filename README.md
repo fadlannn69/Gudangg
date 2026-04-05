@@ -56,3 +56,8 @@
 <p align="center">
 <img src="GuudKoptel4.png" alt="Contoh Gambar" style="border-radius: 10px;" width="500" height="400" />
 </p>
+
+
+## © 2025 Rivaldi Fadlan
+
+All rights reserved. Unauthorized use, copying, modification, or distribution without permission is strictly prohibited.
