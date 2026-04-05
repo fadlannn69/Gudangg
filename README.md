@@ -4,7 +4,7 @@
 <h3 align="center">PT Koperasi Telekomunikasi Indonesia</h3>
 <hr>
 <p align="center">
-<img src="GuudKoptel13.png" alt="Contoh Gambar" style="border-radius: 10px;" width="500" height="400" />
+<img src="Logo.png" alt="Contoh Gambar" style="border-radius: 10px;" width="500" height="400" />
 </p>
 <br>
 <hr>
